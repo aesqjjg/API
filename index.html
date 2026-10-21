@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘의 하늘 — 대한민국 실시간 날씨</title>
+<style>
+:root{color-scheme:dark;--text:#f5f8ff;--muted:#c5d1e3;--glass:rgba(10,20,39,.42);--line:rgba(255,255,255,.18)}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--text)}
+body{min-height:100vh;overflow-x:hidden;background:#172944;transition:background 1.5s ease}
+.scene{position:fixed;inset:0;overflow:hidden;z-index:-2;background:linear-gradient(180deg,#398bd0 0%,#9bd5f2 55%,#e8f5fb 100%);transition:background 1.5s}
+.scene:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(4,13,30,.04),rgba(4,13,30,.42));pointer-events:none}
+body.sunny .scene{background:linear-gradient(180deg,#2585d2 0%,#73c4f2 58%,#d8f3ff 100%)}
+body.cloudy .scene{background:linear-gradient(180deg,#657d96 0%,#9eafbd 58%,#d6dce1 100%)}
+body.rainy .scene{background:linear-gradient(180deg,#27394f 0%,#4c6177 56%,#8b9aa7 100%)}
+body.foggy .scene{background:linear-gradient(180deg,#9baeb8 0%,#c4d0d2 60%,#dce2df 100%)}
+body.snowy .scene{background:linear-gradient(180deg,#718ca5 0%,#c3d9e8 65%,#f1f7fb 100%)}
+body.night .scene{background:linear-gradient(180deg,#071226 0%,#172b4a 65%,#344b68 100%)}
+.sky-glow{position:absolute;width:38vw;height:38vw;min-width:230px;min-height:230px;max-width:520px;max-height:520px;right:12%;top:7%;border-radius:50%;background:radial-gradient(circle,rgba(255,255,219,.85) 0,rgba(255,240,168,.36) 25%,rgba(255,238,170,0) 70%);opacity:0;transition:opacity 1s}
+.sun-disc{position:absolute;right:22%;top:17%;width:clamp(70px,9vw,130px);aspect-ratio:1;border-radius:50%;background:#fff4bd;box-shadow:0 0 35px 12px rgba(255,239,167,.38),0 0 100px 40px rgba(255,232,148,.2);opacity:0;transition:opacity 1s}
+body.sunny .sky-glow,body.sunny .sun-disc{opacity:1}
+body.night .sun-disc{opacity:0}
+.horizon{position:absolute;bottom:-1px;left:-5%;width:110%;height:24vh;background:linear-gradient(180deg,rgba(42,91,99,.02),rgba(24,59,65,.35));clip-path:polygon(0 44%,13% 28%,27% 47%,43% 17%,58% 43%,75% 25%,88% 45%,100% 18%,100% 100%,0 100%)}
+.cloud{position:absolute;top:16%;left:-25%;width:230px;height:65px;border-radius:50px;background:rgba(255,255,255,.72);filter:blur(1px);opacity:0;animation:drift 42s linear infinite}
+.cloud:before,.cloud:after{content:"";position:absolute;background:inherit;border-radius:50%}
+.cloud:before{width:92px;height:92px;left:35px;top:-42px}.cloud:after{width:125px;height:110px;left:90px;top:-53px}
+.cloud.c2{top:29%;transform:scale(.7);animation-duration:58s;animation-delay:-23s;left:-15%;opacity:0}
+body.cloudy .cloud,body.rainy .cloud,body.foggy .cloud,body.snowy .cloud{opacity:.8}
+body.rainy .cloud{background:rgba(209,219,228,.64)}
+body.night .cloud{background:rgba(144,164,187,.36)}
+@keyframes drift{from{left:-30%}to{left:115%}}
+#particles{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.fog-layer{position:absolute;inset:-10%;opacity:0;pointer-events:none;background:linear-gradient(100deg,transparent 0%,rgba(245,250,249,.3) 30%,rgba(255,255,255,.54) 48%,rgba(245,250,249,.18) 70%,transparent 100%);filter:blur(20px);transform:translateX(-80%);animation:fogMove 20s ease-in-out infinite alternate}
+body.foggy .fog-layer{opacity:1}
+@keyframes fogMove{to{transform:translateX(70%)}}
+.wrap{width:min(1120px,calc(100% - 36px));margin:auto;padding:30px 0 28px;min-height:100vh;display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.brand{font-weight:750;letter-spacing:-.04em;font-size:1.06rem;display:flex;align-items:center;gap:10px}
+.brand-mark{width:35px;height:35px;border-radius:12px;background:rgba(255,255,255,.17);display:grid;place-items:center;border:1px solid var(--line)}
+.live{font-size:.8rem;color:#e4f4ff;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:#6ef0b2;box-shadow:0 0 12px #6ef0b2}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);align-items:center;gap:clamp(28px,6vw,78px);padding:65px 0 50px}
+.eyebrow{text-transform:uppercase;letter-spacing:.17em;font-size:.76rem;color:#e0ecf8;font-weight:700}
+h1{font-size:clamp(2.5rem,6vw,5.6rem);line-height:1.02;letter-spacing:-.075em;margin:17px 0 18px;font-weight:760}
+.subtitle{font-size:clamp(1rem,2vw,1.2rem);color:#e1eaf5;line-height:1.7;max-width:520px}
+.location-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:30px}
+select,button{font:inherit;color:var(--text);border:1px solid var(--line);background:rgba(9,20,38,.36);border-radius:14px;padding:12px 15px;outline:none}
+select{min-width:180px;cursor:pointer}
+select option{background:#172944;color:white}
+button{cursor:pointer;font-weight:650;transition:transform .2s,background .2s}
+button:hover{background:rgba(255,255,255,.18);transform:translateY(-1px)}
+button:focus-visible,select:focus-visible{outline:2px solid white;outline-offset:3px}
+.status{min-height:24px;margin-top:14px;color:#e0eaf4;font-size:.88rem}
+.card{border:1px solid rgba(255,255,255,.25);border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.18),rgba(10,22,41,.32));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:clamp(22px,3vw,34px);box-shadow:0 22px 70px rgba(4,13,30,.15)}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#e4edf6;font-size:.9rem}
+.weather-icon{font-size:3rem;filter:drop-shadow(0 5px 14px rgba(0,0,0,.12))}
+.temp{font-size:clamp(4.5rem,9vw,7rem);line-height:1;letter-spacing:-.09em;font-weight:650;margin:17px 0 12px}
+.condition{font-size:1.25rem;font-weight:700}
+.feels{color:#d8e3ef;font-size:.9rem;margin-top:8px}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:27px}
+.metric{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);border-radius:17px;padding:14px}
+.metric-label{font-size:.78rem;color:#d3deea}
+.metric-value{font-size:1.25rem;font-weight:700;margin-top:5px}
+.updated{font-size:.77rem;color:#d1deeb;margin-top:20px}
+footer{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;color:rgba(240,247,255,.78);font-size:.78rem;border-top:1px solid rgba(255,255,255,.18);padding-top:18px}
+footer a{color:inherit}
+.credit{display:flex;gap:6px;align-items:center}
+@media(max-width:760px){.wrap{padding-top:20px}main{grid-template-columns:1fr;gap:28px;padding:48px 0 34px}.intro{text-align:center}.subtitle{margin-inline:auto}.location-row{justify-content:center}.card{max-width:520px;width:100%;margin:auto}.sun-disc{right:13%;top:14%}.horizon{height:17vh}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition:none!important}}
+
+/* Pixel cat companion */
+#cat-world{position:fixed;inset:0;pointer-events:none;z-index:8;overflow:hidden}
+#pixel-cat{position:absolute;width:144px;height:120px;left:calc(50% - 72px);bottom:7vh;image-rendering:pixelated;pointer-events:auto;cursor:grab;touch-action:none;filter:drop-shadow(0 8px 5px rgba(10,25,40,.18));}
+#pixel-cat.dragging{cursor:grabbing;filter:drop-shadow(0 13px 7px rgba(10,25,40,.25))}
+#cat-bubble{position:absolute;left:50%;bottom:calc(7vh + 116px);transform:translateX(-50%);max-width:min(260px,80vw);padding:9px 13px;border-radius:15px 15px 15px 4px;background:rgba(255,255,255,.92);color:#25364a;font-size:13px;font-weight:750;box-shadow:0 5px 20px #142b3d25;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
+#cat-bubble.show{opacity:1}
+#cat-name{position:absolute;bottom:calc(7vh - 24px);left:50%;transform:translateX(-50%);font-size:11px;font-weight:800;letter-spacing:.04em;color:#fff;text-shadow:0 1px 5px #20364d;pointer-events:none;white-space:nowrap}
+@media(max-width:760px){#pixel-cat{width:120px;height:100px}#cat-bubble{bottom:calc(7vh + 94px)}}
+@media(prefers-reduced-motion:reduce){#pixel-cat{transition:none}}
+
+</style>
+</head>
+<body class="sunny">
+<div class="scene" aria-hidden="true">
+  <div class="sky-glow"></div><div class="sun-disc"></div>
+  <div class="cloud"></div><div class="cloud c2"></div>
+  <div class="fog-layer"></div><canvas id="particles"></canvas><div class="horizon"></div>
+</div>
+<div id="cat-world" aria-label="날씨에 반응하는 픽셀 고양이">
+  <canvas id="pixel-cat" width="36" height="30" role="img" aria-label="마우스로 잡아 움직일 수 있는 픽셀 고양이"></canvas>
+  <div id="cat-bubble">냐옹!</div><div id="cat-name">구름이 · 드래그해 봐!</div>
+</div>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><span class="brand-mark">☁</span> 오늘의 하늘</div>
+    <div class="live"><span class="dot"></span> 실시간 날씨 연결</div>
+  </header>
+  <main>
+    <section class="intro">
+      <div class="eyebrow">WEATHER IN KOREA</div>
+      <h1 id="headline">오늘의 하늘,<br>지금 이 순간.</h1>
+      <p class="subtitle" id="summary">실제 날씨 데이터에 맞춰 하늘이 변합니다. 맑은 날엔 햇빛이 번지고, 비가 오면 빗방울이 흐릅니다.</p>
+      <div class="location-row">
+        <select id="city" aria-label="지역 선택">
+          <option value="37.5665,126.9780" selected>서울</option>
+          <option value="35.1796,129.0756">부산</option>
+          <option value="37.4563,126.7052">인천</option>
+          <option value="35.8714,128.6014">대구</option>
+          <option value="36.3504,127.3845">대전</option>
+          <option value="35.1595,126.8526">광주</option>
+          <option value="36.0190,129.3435">포항</option>
+          <option value="36.1195,128.3446">구미</option>
+          <option value="37.8813,127.7298">춘천</option>
+          <option value="33.4996,126.5312">제주</option>
+          <option value="35.5384,129.3114">울산</option>
+          <option value="36.6424,127.4890">청주</option>
+          <option value="37.2636,127.0286">수원</option>
+        </select>
+        <button id="refresh">↻ 날씨 새로고침</button>
+      </div>
+      <div class="status" id="status" role="status">현재 날씨를 불러오는 중…</div>
+    </section>
+    <section class="card" aria-live="polite">
+      <div class="card-head"><span id="place">대한민국 · 서울</span><span class="weather-icon" id="icon">☀️</span></div>
+      <div class="temp"><span id="temp">--</span><span style="font-size:.45em;vertical-align:top;letter-spacing:-.04em">°</span></div>
+      <div class="condition" id="condition">날씨 확인 중</div>
+      <div class="feels" id="daynight">현재 상태를 확인하고 있어요</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">💧 상대 습도</div><div class="metric-value" id="humidity">--%</div></div>
+        <div class="metric"><div class="metric-label">🌬️ 풍속</div><div class="metric-value" id="wind">-- km/h</div></div>
+        <div class="metric"><div class="metric-label">🌧️ 강수량</div><div class="metric-value" id="rain">-- mm</div></div>
+        <div class="metric"><div class="metric-label">☁️ 구름량</div><div class="metric-value" id="clouds">--%</div></div>
+      </div>
+      <div class="updated" id="updated">데이터 출처: Open-Meteo</div>
+    </section>
+  </main>
+  <footer><span>날씨에 따라 배경과 애니메이션이 자동으로 바뀝니다.</span><span class="credit">Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></span></footer>
+</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const city = $('city');
+  const canvas = $('particles');
+  const ctx = canvas.getContext('2d');
+  let mode = 'sunny', particles = [], w = 0, h = 0, lastFrame = 0;
+  const labels = {
+    0:['맑음','☀️','sunny'], 1:['대체로 맑음','🌤️','sunny'], 2:['부분적으로 흐림','⛅','cloudy'], 3:['흐림','☁️','cloudy'],
+    45:['안개','🌫️','foggy'], 48:['짙은 안개','🌫️','foggy'],
+    51:['약한 이슬비','🌦️','rainy'], 53:['이슬비','🌧️','rainy'], 55:['강한 이슬비','🌧️','rainy'],
+    56:['어는 이슬비','🌧️','rainy'], 57:['강한 어는 이슬비','🌧️','rainy'],
+    61:['약한 비','🌦️','rainy'], 63:['비','🌧️','rainy'], 65:['강한 비','🌧️','rainy'],
+    66:['어는 비','🌧️','rainy'], 67:['강한 어는 비','🌧️','rainy'],
+    71:['약한 눈','🌨️','snowy'], 73:['눈','❄️','snowy'], 75:['강한 눈','❄️','snowy'], 77:['싸락눈','🌨️','snowy'],
+    80:['약한 소나기','🌦️','rainy'], 81:['소나기','🌧️','rainy'], 82:['강한 소나기','⛈️','rainy'],
+    85:['눈 소나기','🌨️','snowy'], 86:['강한 눈 소나기','❄️','snowy'],
+    95:['뇌우','⛈️','rainy'], 96:['우박을 동반한 뇌우','⛈️','rainy'], 99:['강한 우박 뇌우','⛈️','rainy']
+  };
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = window.innerWidth; h = window.innerHeight;
+    canvas.width = Math.floor(w*dpr); canvas.height = Math.floor(h*dpr);
+    canvas.style.width = w+'px'; canvas.style.height = h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    resetParticles();
+  }
+  function resetParticles(){
+    const count = mode === 'rainy' ? Math.min(190, Math.floor(w/5)) : mode === 'snowy' ? Math.min(85, Math.floor(w/10)) : mode === 'sunny' ? 18 : 0;
+    particles = Array.from({length:count}, () => ({
+      x:Math.random()*w, y:Math.random()*h, len:mode==='rainy'?Math.random()*16+10:Math.random()*4+2,
+      speed:mode==='rainy'?Math.random()*7+8:mode==='snowy'?Math.random()*1.2+.4:Math.random()*.8+.2,
+      drift:(Math.random()-.5)*(mode==='rainy'?2.3:1.1), alpha:Math.random()*.45+.18, size:Math.random()*2+1
+    }));
+  }
+  function animate(t){
+    requestAnimationFrame(animate);
+    if(t-lastFrame<25)return; lastFrame=t;
+    ctx.clearRect(0,0,w,h);
+    if(mode==='rainy'){
+      ctx.lineWidth=1.3; ctx.strokeStyle='rgba(220,238,255,.56)';
+      for(const p of particles){ctx.globalAlpha=p.alpha;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-4,p.y+p.len);ctx.stroke();p.x+=p.drift;p.y+=p.speed*1.8;if(p.y>h+25){p.y=-25;p.x=Math.random()*w}if(p.x<-20)p.x=w+10}
+      ctx.globalAlpha=1;
+    } else if(mode==='snowy'){
+      for(const p of particles){ctx.globalAlpha=p.alpha;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();p.x+=Math.sin(p.y/45)*.7+p.drift;p.y+=p.speed;if(p.y>h+5){p.y=-5;p.x=Math.random()*w}if(p.x<0)p.x=w;if(p.x>w)p.x=0}
+      ctx.globalAlpha=1;
+    } else if(mode==='sunny'){
+      for(const p of particles){ctx.globalAlpha=p.alpha*.7;ctx.fillStyle='#fff4c8';ctx.beginPath();ctx.arc(p.x,p.y,p.size*1.6,0,Math.PI*2);ctx.fill();p.y-=p.speed*.45;p.x+=p.drift*.2;if(p.y<0){p.y=h*.65+Math.random()*h*.35;p.x=Math.random()*w}}
+      ctx.globalAlpha=1;
+    }
+  }
+  function setMode(next, isDay){
+    mode=next;
+    document.body.className=next+(isDay?'':' night');
+    resetParticles();
+  }
+  function formatTime(s){
+    if(!s)return '';
+    const d=new Date(s);
+    return new Intl.DateTimeFormat('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Seoul'}).format(d);
+  }
+  async function loadWeather(){
+    const [lat,lon]=city.value.split(',');
+    const name=city.options[city.selectedIndex].textContent;
+    $('status').textContent='Open-Meteo에서 실제 날씨를 가져오는 중…';
+    $('refresh').disabled=true;
+    try{
+      const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,wind_speed_10m&timezone=Asia%2FSeoul`;
+      const response=await fetch(url,{cache:'no-store'});
+      if(!response.ok)throw new Error('날씨 서버 응답 오류 ('+response.status+')');
+      const data=await response.json();
+      const c=data.current;
+      if(!c)throw new Error('현재 날씨 데이터가 없습니다.');
+      const [desc,emoji,visual]=labels[c.weather_code]||['날씨 정보','🌤️',Number(c.is_day)?'sunny':'cloudy'];
+      setMode(visual,Boolean(c.is_day));
+      $('place').textContent='대한민국 · '+name;
+      $('icon').textContent=emoji;
+      $('temp').textContent=Math.round(c.temperature_2m);
+      $('condition').textContent=desc;
+      $('daynight').textContent=(Number(c.is_day)?'현재 낮 시간대예요':'현재 밤 시간대예요')+' · 날씨 코드 '+c.weather_code;
+      $('humidity').textContent=Math.round(c.relative_humidity_2m)+'%';
+      $('wind').textContent=Math.round(c.wind_speed_10m)+' km/h';
+      $('rain').textContent=(Number(c.precipitation)||0).toFixed(1)+' mm';
+      $('clouds').textContent=Math.round(c.cloud_cover)+'%';
+      $('updated').textContent='관측 시각: '+formatTime(c.time)+' · 데이터 출처: Open-Meteo';
+      const summaries={
+        sunny:'하늘이 밝고 햇살이 은은하게 움직입니다. 실제 날씨에 맞춰 화면 효과를 바꿨어요.',
+        cloudy:'구름이 낀 하늘로 바뀌었습니다. 흐린 날의 차분한 분위기를 느껴보세요.',
+        rainy:'비가 내리는 날씨예요. 화면에 빗방울이 떨어지는 모션을 적용했습니다.',
+        foggy:'안개가 낀 날씨예요. 반투명한 안개가 천천히 화면을 지나갑니다.',
+        snowy:'눈이 내리는 날씨예요. 눈송이가 천천히 흩날립니다.'
+      };
+      $('summary').textContent=summaries[visual]||summaries.cloudy;
+      $('headline').innerHTML=visual==='sunny'?'오늘의 하늘,<br>햇살이 반짝여요.':visual==='rainy'?'오늘의 하늘,<br>비가 내립니다.':visual==='foggy'?'오늘의 하늘,<br>안개가 머물러요.':visual==='snowy'?'오늘의 하늘,<br>눈이 흩날려요.':'오늘의 하늘,<br>구름이 지나가요.';
+      $('status').textContent='날씨를 업데이트했어요.';
+    }catch(e){
+      $('status').textContent='날씨를 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.';
+      $('summary').textContent='실시간 데이터 연결에 실패했습니다. 연결이 복구되면 실제 날씨에 맞춰 화면 효과가 바뀝니다.';
+      console.error(e);
+    }finally{$('refresh').disabled=false;}
+  }
+  city.addEventListener('change',loadWeather);
+  $('refresh').addEventListener('click',loadWeather);
+  window.addEventListener('resize',resize);
+  resize();requestAnimationFrame(animate);loadWeather();
+  setInterval(loadWeather,10*60*1000);
+})();
+</script>
+
+<script>
+(() => {
+  const cat = document.getElementById('pixel-cat');
+  const bubble = document.getElementById('cat-bubble');
+  const name = document.getElementById('cat-name');
+  const cx = cat.getContext('2d');
+  cx.imageSmoothingEnabled = false;
+  let x = Math.max(12, innerWidth * .46), y = innerHeight * .70;
+  let vx = 0.55, dragging = false, pointerId = null, dragDX = 0, dragDY = 0;
+  let mood = 'walk', actionUntil = 0, frame = 0, last = performance.now(), bubbleUntil = 0;
+  let wet = false, sunny = false, weather = 'sunny', blink = 0, nextAction = performance.now()+2600;
+  const palette = {fur:'#f3b56e',shadow:'#c77c43',light:'#ffe0a7',dark:'#4a342b',pink:'#ee8e9c',white:'#fff6e9',blue:'#72bde7'};
+  function rect(x,y,w,h,c){cx.fillStyle=c;cx.fillRect(Math.round(x),Math.round(y),w,h)}
+  function pixelCat(t){
+    cx.clearRect(0,0,36,30);
+    const p=palette, walk=Math.floor(t/130)%2, hanging=dragging, asleep=mood==='sleep', sitting=mood==='sit'||asleep, groom=mood==='groom', stretch=mood==='stretch';
+    // tail, swishing in small pixel steps
+    const tailUp = hanging ? 0 : Math.round(Math.sin(t/190)*2);
+    rect(25,14,3,3,p.shadow); rect(28,12+tailUp,3,3,p.fur); rect(30,9+tailUp,3,3,p.fur); rect(31,8+tailUp,2,2,p.shadow);
+    // ears
+    rect(8,5,5,6,p.fur);rect(9,3,3,4,p.fur);rect(9,5,2,2,p.pink);
+    rect(21,5,5,6,p.fur);rect(22,3,3,4,p.fur);rect(22,5,2,2,p.pink);
+    // head and body
+    rect(7,7,20,12,p.fur);rect(9,5,16,3,p.fur);rect(6,10,22,7,p.fur);
+    rect(8,16,19,7,p.fur);rect(10,21,15,3,p.light);
+    // cheek / muzzle
+    rect(10,13,5,3,p.light);rect(20,13,5,3,p.light);rect(16,14,3,2,p.pink);
+    if(asleep){rect(11,11,4,1,p.dark);rect(21,11,4,1,p.dark);rect(27,3,2,2,p.white);rect(30,1,2,2,p.white)}
+    else if(blink>0){rect(11,11,4,1,p.dark);rect(21,11,4,1,p.dark)}
+    else {rect(11,10,3,3,p.dark);rect(22,10,3,3,p.dark);rect(12,10,1,1,p.white);rect(23,10,1,1,p.white)}
+    // whiskers
+    rect(4,14,4,1,p.white);rect(4,16,3,1,p.white);rect(27,14,4,1,p.white);rect(28,16,3,1,p.white);
+    // legs, dangle while held
+    if(hanging){
+      rect(9,21,4,5,p.fur);rect(9,25,3,3,p.light);rect(22,21,4,5,p.fur);rect(23,25,3,3,p.light);
+      rect(14,21,3,6,p.fur);rect(14,26,3,2,p.light);rect(19,21,3,6,p.fur);rect(19,26,3,2,p.light);
+    } else if(asleep){
+      rect(7,23,8,3,p.fur);rect(20,23,8,3,p.fur);rect(12,24,4,2,p.light);rect(22,24,4,2,p.light);
+    } else if(sitting){
+      rect(9,21,5,5,p.fur);rect(22,21,5,5,p.fur);rect(9,25,5,2,p.light);rect(22,25,5,2,p.light);
+    } else if(stretch){
+      rect(7,22,6,3,p.fur);rect(23,22,6,3,p.fur);rect(5,24,4,2,p.light);rect(27,24,4,2,p.light);
+    } else {
+      rect(8,22,4,4,p.fur);rect(23,22,4,4,p.fur);
+      if(walk){rect(11,24,4,2,p.light);rect(21,24,4,2,p.light);rect(21,22,3,3,p.fur);rect(11,22,3,3,p.fur)}
+      else {rect(7,24,4,2,p.light);rect(24,24,4,2,p.light);rect(14,22,3,4,p.fur);rect(18,22,3,4,p.fur)}
+    }
+    // wet fur + dripping water in rain
+    if(wet){
+      rect(8,8,2,2,p.blue);rect(24,8,2,2,p.blue);rect(7,17,2,3,p.blue);rect(27,17,2,3,p.blue);
+      rect(13,6,2,1,p.white);rect(20,7,2,1,p.white);
+    }
+    // held cat's tiny "!!" and sparkle on sunny weather
+    if(hanging){rect(30,3,2,5,p.dark);rect(30,9,2,2,p.dark)}
+    else if(sunny && Math.floor(t/500)%3===0){rect(3,5,2,2,'#fff0a0');rect(31,6,2,2,'#fff0a0')}
+  }
+  function say(text,duration=1800){bubble.textContent=text;bubble.classList.add('show');bubbleUntil=performance.now()+duration}
+  const chatter = {
+    sunny:['햇살 좋다냥 ☀️','오늘은 기분 최고! 😸','나비 잡으러 갈까? 🦋','햇볕 쬐는 중… ✨','냐옹~ 좋은 날이야! 💛'],
+    rainy:['비에 젖었다냥… 🌧️','털이 축축해… 🥺','빗소리는 좋지만 집에 갈래! ☔','몸을 털어야겠다냥 💦'],
+    cloudy:['구름 구경 중… ☁️','오늘은 느긋하게~','저 구름 꼭 고양이 같다냥!'],
+    foggy:['앞이 뿌옇다냥… 🌫️','조심조심 걸어야지!'],
+    snowy:['눈이다냥! ❄️','발이 차가워! 🐾','눈송이 잡기 놀이!']
+  };
+  function getWeather(){
+    weather=['sunny','cloudy','rainy','foggy','snowy'].find(c=>document.body.classList.contains(c))||'cloudy';
+    wet=weather==='rainy';sunny=weather==='sunny';
+    if(wet && !dragging) name.textContent='구름이 · 비 맞은 고양이 🥺';
+    else name.textContent='구름이 · '+(dragging?'대롱대롱!':'드래그해 봐!');
+  }
+  function groundY(){return innerHeight-cat.getBoundingClientRect().height-innerHeight*.07}
+  function place(){cat.style.left=x+'px';cat.style.top=y+'px';bubble.style.left=(x+cat.offsetWidth/2)+'px';bubble.style.top=(y-25)+'px';name.style.left=(x+cat.offsetWidth/2)+'px';name.style.top=(y+cat.offsetHeight+1)+'px';name.style.bottom='auto'}
+  function loop(now){
+    const dt=Math.min(40,now-last);last=now;frame+=dt;
+    getWeather();
+    if(!dragging){
+      if(mood==='walk'){x+=vx*dt*.075;if(x<3){x=3;vx=Math.abs(vx)}if(x>innerWidth-cat.offsetWidth-3){x=innerWidth-cat.offsetWidth-3;vx=-Math.abs(vx)}}
+      if(now>nextAction){
+        const options=wet?['sit','groom','stretch']:['sit','groom','sleep','stretch','walk'];
+        mood=options[Math.floor(Math.random()*options.length)];
+        actionUntil=now+(mood==='sleep'?2500:1100);
+        nextAction=now+(mood==='walk'?2200:3500+Math.random()*4500);
+        if(mood==='groom')say(wet?'축축한 털을 정리하는 중… 🐾':'세수하는 중! 냥냥냥');
+        if(mood==='sleep')say('zzz… 😴',2600);
+        if(mood==='stretch')say('기지개 쭈욱~');
+        if(mood==='sit'&&Math.random()<.55)say('여기 앉아 있을래냥');
+      }
+      if(mood!=='walk'&&now>actionUntil){mood='walk';}
+      if(now>nextAction-500 && mood==='walk' && Math.random()<.015){vx*=-1}
+      if(now>bubbleUntil)bubble.classList.remove('show');
+    }
+    blink=(Math.sin(now/1800)>0.993)?1:0;
+    pixelCat(now);place();requestAnimationFrame(loop);
+  }
+  cat.addEventListener('pointerdown',e=>{
+    e.preventDefault();dragging=true;pointerId=e.pointerId;cat.setPointerCapture(pointerId);cat.classList.add('dragging');
+    const r=cat.getBoundingClientRect();dragDX=e.clientX-r.left;dragDY=e.clientY-r.top;
+    mood='held';say(wet?'젖은 고양이 들어올렸다냥… 🥹':'우와! 공중 산책이다냥! 😹',4000);getWeather();place();
+  });
+  cat.addEventListener('pointermove',e=>{
+    if(!dragging||e.pointerId!==pointerId)return;
+    x=Math.max(0,Math.min(innerWidth-cat.offsetWidth,e.clientX-dragDX));
+    y=Math.max(0,Math.min(innerHeight-cat.offsetHeight-8,e.clientY-dragDY));
+    // The cat dangles just below the cursor when grabbed.
+    place();
+  });
+  function release(e){
+    if(!dragging|| (e && e.pointerId!==pointerId))return;
+    dragging=false;pointerId=null;cat.classList.remove('dragging');mood='land';y=groundY();
+    say(wet?'첨벙! 젖은 채로 착지했다냥 💦':'착! 무사히 착지했다냥! 🐾',1900);
+    setTimeout(()=>{if(!dragging)mood='walk'},220);
+    nextAction=performance.now()+1800;
+  }
+  cat.addEventListener('pointerup',release);cat.addEventListener('pointercancel',release);
+  cat.addEventListener('click',()=>{if(!dragging){const lines=chatter[weather]||chatter.cloudy;say(lines[Math.floor(Math.random()*lines.length)]);mood='groom';actionUntil=performance.now()+900;nextAction=performance.now()+2000;}});
+  cat.addEventListener('dblclick',()=>{say('골골골… 쓰다듬어 줘서 좋다냥 💕',2300)});
+  window.addEventListener('resize',()=>{x=Math.min(x,innerWidth-cat.offsetWidth);y=Math.min(y,groundY());});
+  // Start with a small greeting, then let the cat wander and react naturally.
+  say('안녕! 나 구름이야 😺',2500);requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
